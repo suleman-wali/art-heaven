@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import LightboxModal from './LightboxModal';
 import { ChevronLeft, ChevronRight, MessageCircle, Check } from 'lucide-react';
-import { getWhatsAppArtworkUrl } from '@/utils/whatsapp';
+import { getWhatsAppArtworkUrl, ART_HEAVEN_DOMAIN } from '@/utils/whatsapp';
 
 export interface Artwork {
   id: number;
@@ -45,7 +45,7 @@ const artworks: Artwork[] = [
     src: '/images/wa-art-7.jpeg',
     title: 'Vintage Floral Bicycle',
     price: 'PKR 9,500',
-    medium: 'Hand-Embroidered Botanical Meadow Bike on Linen Fabric',
+    medium: 'Hand-Embroidered Botanical Meadow Bike on Natural Linen',
   },
   {
     id: 5,
@@ -171,8 +171,7 @@ export default function Gallery() {
   const handleWhatsAppBuy = (e: React.MouseEvent, item: Artwork) => {
     e.stopPropagation();
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const shareText = `Art Heaven - "${item.title}" (${item.price}): ${origin}${item.src}`;
+    const shareText = `Art Heaven - "${item.title}" (${item.price}): ${ART_HEAVEN_DOMAIN}${item.src}`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);

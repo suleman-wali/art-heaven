@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, MessageCircle, Copy, Check } from 'lucide-react';
-import { getWhatsAppArtworkUrl } from '@/utils/whatsapp';
+import { X, ChevronLeft, ChevronRight, MessageCircle, Check } from 'lucide-react';
+import { getWhatsAppArtworkUrl, ART_HEAVEN_DOMAIN } from '@/utils/whatsapp';
 
 interface Artwork {
   id: number;
@@ -57,8 +57,7 @@ export default function LightboxModal({
 
   const handleBuyOnWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const shareText = `Art Heaven - "${currentImage.title}" (${currentImage.price}): ${origin}${currentImage.src}`;
+    const shareText = `Art Heaven - "${currentImage.title}" (${currentImage.price}): ${ART_HEAVEN_DOMAIN}${currentImage.src}`;
     
     // Copy link
     if (navigator.clipboard) {

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { MessageCircle, Check, Sparkles } from 'lucide-react';
-import { getWhatsAppArtworkUrl } from '@/utils/whatsapp';
+import { getWhatsAppArtworkUrl, ART_HEAVEN_DOMAIN } from '@/utils/whatsapp';
 
 export default function Hero() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -33,8 +33,7 @@ export default function Hero() {
 
   const handleWhatsAppBuy = (e: React.MouseEvent, item: typeof heroArtworks[0]) => {
     e.stopPropagation();
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const shareText = `Art Heaven - "${item.title}" (${item.price}): ${origin}${item.image}`;
+    const shareText = `Art Heaven - "${item.title}" (${item.price}): ${ART_HEAVEN_DOMAIN}${item.image}`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);
