@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MessageCircle, MapPin, Phone, Mail } from 'lucide-react';
+import { MessageCircle, MapPin, Phone, Mail, Instagram } from 'lucide-react';
 import { getWhatsAppCustomOrderUrl } from '@/utils/whatsapp';
 
 export default function Footer() {
@@ -134,6 +134,17 @@ export default function Footer() {
               <span>contact@artheaven.store</span>
             </a>
 
+            {/* Instagram */}
+            <a
+              href="https://www.instagram.com/art_heaven2026/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center space-x-2.5 text-white/90 hover:text-[#e7c76a] transition-colors text-[15px]"
+            >
+              <Instagram size={18} className="text-pink-400 group-hover:text-[#e7c76a]" />
+              <span>@art_heaven2026</span>
+            </a>
+
             {/* Scroll To Top Button */}
             <div className="pt-2">
               <button
@@ -182,7 +193,9 @@ export default function Footer() {
               <MessageCircle size={20} />
             </a>
             <a
-              href="#"
+              href="https://www.instagram.com/art_heaven2026/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="p-1 text-white hover:text-[#e7c76a] transition-transform hover:scale-110"
               aria-label="Instagram"
             >
