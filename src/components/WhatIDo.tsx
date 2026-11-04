@@ -69,7 +69,7 @@ export default function WhatIDo() {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 lg:mb-24">
           <span className="text-[#e7c76a] font-inter uppercase tracking-[3px] text-xs font-semibold mb-3 inline-block">
-            Artisan Services & Crafts
+            Artisan Services & Crafts • Art Shop in Gujranwala
           </span>
 
           <h2 className="font-poppins font-semibold text-[#e7c76a] text-[44px] sm:text-[68px] md:text-[84px] lg:text-[100px] leading-[1.05] tracking-tight mb-5">
@@ -77,7 +77,7 @@ export default function WhatIDo() {
           </h2>
 
           <p className="font-inter text-white/80 text-[16px] sm:text-[18px] leading-[30px]">
-            At <strong>Art Heaven</strong>, Neelofar Usman creates bespoke fine art and handcrafted textiles. From custom-painted luxury pillows to statement acrylic canvas art, each piece is handcrafted with love and devotion.
+            At <strong>Art Heaven</strong>, Neelofar Usman creates bespoke fine art and handcrafted textiles as the leading art shop in Gujranwala. From custom-painted luxury pillows to statement acrylic canvas art, each piece is handcrafted with love, precision, and devotion.
           </p>
         </div>
 

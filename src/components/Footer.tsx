@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MessageCircle, Phone } from 'lucide-react';
+import { MessageCircle, MapPin, Phone, Mail } from 'lucide-react';
 import { getWhatsAppCustomOrderUrl } from '@/utils/whatsapp';
 
 export default function Footer() {
@@ -34,7 +34,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="font-inter text-sm text-white/70 max-w-xs leading-relaxed">
-              Art work by Neelofar Usman. Exclusive handcrafted pillows, bespoke acrylic paintings, and embroidery arts in Pakistan & worldwide.
+              Art work by Neelofar Usman. Premier <strong>art shop in Gujranwala</strong>. Exclusive handcrafted pillows, bespoke acrylic paintings on canvas, and embroidery arts in Pakistan & worldwide.
             </p>
           </div>
 
@@ -87,12 +87,28 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Col 3: Direct WhatsApp Phone */}
+          {/* Col 3: Studio Location */}
+          <div className="flex flex-col space-y-4">
+            <span className="text-xs font-semibold text-[#e7c76a] uppercase tracking-widest block mb-1">
+              Studio Location
+            </span>
+            <div className="flex items-start space-x-2.5 text-white/80 text-sm leading-relaxed">
+              <MapPin size={20} className="text-[#e7c76a] flex-shrink-0 mt-0.5" />
+              <span>
+                Sahibzada Sayyed Khubaib Hasan Bukhari AHC, House# 49-A, Meeran Jee City, near Ratta Road, Jhal, Gujranwala, 52250, Pakistan
+              </span>
+            </div>
+            <p className="text-xs text-white/50">
+              The premier art shop in Gujranwala for handcrafted pillows, embroidery, and acrylic canvas paintings.
+            </p>
+          </div>
+
+          {/* Col 4: Direct WhatsApp & Contact */}
           <div className="flex flex-col space-y-4">
             <span className="text-xs font-semibold text-[#e7c76a] uppercase tracking-widest block mb-1">
               Direct Orders & WhatsApp
             </span>
-            <p className="font-poppins text-[16px] text-white/90 leading-[24px]">
+            <p className="font-poppins text-[15px] text-white/90 leading-[22px]">
               Neelofar Usman Art Studio
               <br />
               Art Heaven Fine Arts
@@ -111,52 +127,47 @@ export default function Footer() {
 
             {/* Email */}
             <a
-              href="mailto:contact@artheaven.com"
-              className="group flex items-center space-x-3 text-white/90 hover:text-[#e7c76a] transition-colors text-[16px]"
+              href="mailto:contact@artheaven.store"
+              className="group flex items-center space-x-2.5 text-white/90 hover:text-[#e7c76a] transition-colors text-[15px]"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/email.svg"
-                alt=""
-                className="w-4 h-4 opacity-80 group-hover:opacity-100 group-hover:brightness-125 transition-all"
-              />
-              <span>contact@artheaven.com</span>
+              <Mail size={18} className="text-white/60 group-hover:text-[#e7c76a]" />
+              <span>contact@artheaven.store</span>
             </a>
-          </div>
 
-          {/* Col 4: Scroll To Top Button */}
-          <div className="flex lg:justify-end items-start">
-            <button
-              onClick={scrollToTop}
-              className="w-[63px] h-[63px] bg-[#e9d580] hover:bg-white flex items-center justify-center transition-all duration-300 shadow-md hover:scale-105 rounded-sm"
-              aria-label="Scroll to top"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="28"
-                height="28"
-                viewBox="0 0 63 63"
-                fill="none"
+            {/* Scroll To Top Button */}
+            <div className="pt-2">
+              <button
+                onClick={scrollToTop}
+                className="w-[50px] h-[50px] bg-[#e9d580] hover:bg-white flex items-center justify-center transition-all duration-300 shadow-md hover:scale-105 rounded-sm"
+                aria-label="Scroll to top"
               >
-                <path
-                  d="M31.5 52.5V10.5M31.5 10.5L47.25 26.25M31.5 10.5L15.75 26.25"
-                  stroke="#202020"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 63 63"
+                  fill="none"
+                >
+                  <path
+                    d="M31.5 52.5V10.5M31.5 10.5L47.25 26.25M31.5 10.5L15.75 26.25"
+                    stroke="#202020"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Bottom Row */}
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6 text-[15px] text-white/70">
-          <div className="flex items-center space-x-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-8 gap-2">
             <span className="font-poppins">© 2026 Art Heaven by Neelofar Usman</span>
-            <a href="#" className="hover:text-[#e7c76a] transition-colors">
-              Privacy Policy
-            </a>
+            <span className="text-xs text-white/50">
+              Art Shop in Gujranwala • Handcrafted Luxury Pillows & Fine Art
+            </span>
           </div>
 
           {/* Social Icons */}
@@ -179,18 +190,6 @@ export default function Footer() {
               <img
                 src="/images/instagram.svg"
                 alt="Instagram"
-                className="w-5 h-5"
-              />
-            </a>
-            <a
-              href="#"
-              className="p-1 text-white hover:text-[#e7c76a] transition-transform hover:scale-110"
-              aria-label="Share"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/share.svg"
-                alt="Share"
                 className="w-5 h-5"
               />
             </a>

@@ -1,20 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LightboxModal from './LightboxModal';
 import { ChevronLeft, ChevronRight, MessageCircle, Check } from 'lucide-react';
 import { getWhatsAppArtworkUrl, ART_HEAVEN_DOMAIN } from '@/utils/whatsapp';
+import { supabase } from '@/utils/supabase';
 
 export interface Artwork {
-  id: number;
+  id: number | string;
   thumb: string;
   src: string;
   title: string;
   price: string;
   medium: string;
+  created_at?: string;
 }
 
-const artworks: Artwork[] = [
+const DEFAULT_ARTWORKS: Artwork[] = [
   {
     id: 1,
     thumb: '/images/wa-art-9.jpeg',
@@ -132,14 +134,35 @@ const artworks: Artwork[] = [
 const ITEMS_PER_PAGE = 9;
 
 export default function Gallery() {
+  const [artworks, setArtworks] = useState<Artwork[]>(DEFAULT_ARTWORKS);
   const [currentPage, setCurrentPage] = useState(1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedArtworkIndex, setSelectedArtworkIndex] = useState(0);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<number | string | null>(null);
 
-  const totalPages = Math.ceil(artworks.length / ITEMS_PER_PAGE);
+  // Fetch live artworks from Supabase `art_gallery` table
+  useEffect(() => {
+    async function loadArtworks() {
+      try {
+        const { data, error } = await supabase
+          .from('art_gallery')
+          .select('*')
+          .order('id', { ascending: false });
 
-  // Current page items (1-9 on Page 1, 10-14 on Page 2)
+        if (!error && data && data.length > 0) {
+          setArtworks(data);
+        }
+      } catch {
+        // Graceful fallback to DEFAULT_ARTWORKS
+      }
+    }
+
+    loadArtworks();
+  }, []);
+
+  const totalPages = Math.max(1, Math.ceil(artworks.length / ITEMS_PER_PAGE));
+
+  // Current page items (1-9 on Page 1, 10+ on Page 2, etc.)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const currentArtworks = artworks.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
@@ -171,7 +194,11 @@ export default function Gallery() {
   const handleWhatsAppBuy = (e: React.MouseEvent, item: Artwork) => {
     e.stopPropagation();
 
-    const shareText = `Art Heaven - "${item.title}" (${item.price}): ${ART_HEAVEN_DOMAIN}${item.src}`;
+    const fullLink = item.src.startsWith('http')
+      ? item.src
+      : `${ART_HEAVEN_DOMAIN}${item.src.startsWith('/') ? '' : '/'}${item.src}`;
+
+    const shareText = `Art Heaven - "${item.title}" (${item.price}): ${fullLink}`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);
@@ -192,13 +219,13 @@ export default function Gallery() {
         {/* Title & Info */}
         <div className="text-center mb-16 md:mb-20">
           <span className="text-[#e7c76a] font-inter uppercase tracking-[3px] text-xs font-semibold mb-3 inline-block">
-            Art Heaven Collections
+            Art Heaven Collections • Gujranwala Studio
           </span>
           <h2 className="font-poppins font-semibold text-[#e7c76a] text-[44px] sm:text-[68px] md:text-[84px] lg:text-[100px] leading-[1.05] tracking-tight mb-4">
             Artwork Gallery
           </h2>
           <p className="font-inter text-white/80 text-[16px] sm:text-[18px] max-w-2xl mx-auto">
-            Original handcrafted pillows, acrylic paintings, and embroidery arts by Neelofar Usman. Tap any artwork to zoom or click the WhatsApp button to purchase directly.
+            Original handcrafted pillows, acrylic paintings, and embroidery arts by Neelofar Usman at the premier art shop in Gujranwala. Tap any artwork to zoom or click the WhatsApp button to purchase directly.
           </p>
         </div>
 
@@ -214,7 +241,7 @@ export default function Gallery() {
               <div className="relative aspect-[650/740] w-full overflow-hidden bg-black/40">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={item.thumb}
+                  src={item.thumb || item.src}
                   alt={item.title}
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -276,49 +303,51 @@ export default function Gallery() {
           ))}
         </div>
 
-        {/* Pagination Section (9 items on Page 1, items 10+ on Page 2) */}
-        <div className="mt-16 sm:mt-20 flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-white/10">
-          <p className="text-white/60 text-sm font-inter">
-            Showing {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, artworks.length)} of {artworks.length} artworks
-          </p>
+        {/* Pagination Section (9 items per page) */}
+        {artworks.length > ITEMS_PER_PAGE && (
+          <div className="mt-16 sm:mt-20 flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-white/10">
+            <p className="text-white/60 text-sm font-inter">
+              Showing {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, artworks.length)} of {artworks.length} artworks
+            </p>
 
-          <div className="flex items-center space-x-2">
-            {/* Prev button */}
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2.5 rounded-full border border-white/20 hover:border-[#e7c76a] text-white hover:text-[#e7c76a] disabled:opacity-30 disabled:pointer-events-none transition-all"
-              aria-label="Previous Page"
-            >
-              <ChevronLeft size={20} />
-            </button>
-
-            {/* Page number buttons */}
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+            <div className="flex items-center space-x-2">
+              {/* Prev button */}
               <button
-                key={pageNum}
-                onClick={() => handlePageChange(pageNum)}
-                className={`w-11 h-11 rounded-full font-poppins font-semibold text-sm transition-all duration-300 ${
-                  currentPage === pageNum
-                    ? 'bg-[#e7c76a] text-[#202020] shadow-md scale-105'
-                    : 'bg-white/5 border border-white/10 text-white hover:border-[#e7c76a] hover:text-[#e7c76a]'
-                }`}
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2.5 rounded-full border border-white/20 hover:border-[#e7c76a] text-white hover:text-[#e7c76a] disabled:opacity-30 disabled:pointer-events-none transition-all"
+                aria-label="Previous Page"
               >
-                {pageNum}
+                <ChevronLeft size={20} />
               </button>
-            ))}
 
-            {/* Next button */}
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2.5 rounded-full border border-white/20 hover:border-[#e7c76a] text-white hover:text-[#e7c76a] disabled:opacity-30 disabled:pointer-events-none transition-all"
-              aria-label="Next Page"
-            >
-              <ChevronRight size={20} />
-            </button>
+              {/* Page number buttons */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`w-11 h-11 rounded-full font-poppins font-semibold text-sm transition-all duration-300 ${
+                    currentPage === pageNum
+                      ? 'bg-[#e7c76a] text-[#202020] shadow-md scale-105'
+                      : 'bg-white/5 border border-white/10 text-white hover:border-[#e7c76a] hover:text-[#e7c76a]'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              {/* Next button */}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2.5 rounded-full border border-white/20 hover:border-[#e7c76a] text-white hover:text-[#e7c76a] disabled:opacity-30 disabled:pointer-events-none transition-all"
+                aria-label="Next Page"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Lightbox Component */}
@@ -326,7 +355,14 @@ export default function Gallery() {
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
         currentIndex={selectedArtworkIndex}
-        images={artworks}
+        images={artworks.map((a, i) => ({
+          id: typeof a.id === 'number' ? a.id : i + 1,
+          thumb: a.thumb || a.src,
+          src: a.src,
+          title: a.title,
+          price: a.price,
+          medium: a.medium,
+        }))}
         onPrev={handlePrev}
         onNext={handleNext}
       />
