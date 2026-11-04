@@ -6,6 +6,7 @@ import {
   Lock,
   Unlock,
   PlusCircle,
+  Pencil,
   Trash2,
   ExternalLink,
   MessageCircle,
@@ -18,7 +19,8 @@ import {
   Copy,
   Check,
   Eye,
-  Database
+  Database,
+  X
 } from 'lucide-react';
 import { supabase } from '@/utils/supabase';
 import { getWhatsAppArtworkUrl } from '@/utils/whatsapp';
@@ -45,7 +47,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  // Form state
+  // Add Form state
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [medium, setMedium] = useState('');
@@ -54,6 +56,17 @@ export default function AdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Edit Modal state
+  const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editMedium, setEditMedium] = useState('');
+  const [editNewFile, setEditNewFile] = useState<File | null>(null);
+  const [editNewPreviewUrl, setEditNewPreviewUrl] = useState<string | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   // Deleting state
   const [deletingId, setDeletingId] = useState<number | string | null>(null);
@@ -122,12 +135,21 @@ export default function AdminPage() {
     }
   };
 
-  const handlePriceInput = (value: string) => {
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditNewFile(file);
+      const url = URL.createObjectURL(file);
+      setEditNewPreviewUrl(url);
+    }
+  };
+
+  const handlePriceInput = (value: string, setter: (val: string) => void) => {
     let clean = value.trim();
     if (clean && !clean.toUpperCase().startsWith('PKR')) {
       clean = `PKR ${clean}`;
     }
-    setPrice(clean);
+    setter(clean);
   };
 
   const handleAddArtwork = async (e: React.FormEvent) => {
@@ -156,7 +178,6 @@ export default function AdminPage() {
 
     try {
       // 1. Upload image to Supabase Storage bucket 'arts'
-      const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
       const cleanFileName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const fileName = `artwork_${Date.now()}_${cleanFileName}`;
 
@@ -219,6 +240,123 @@ export default function AdminPage() {
     }
   };
 
+  // Open Edit Modal
+  const openEditModal = (item: GalleryItem) => {
+    setEditingItem(item);
+    setEditTitle(item.title);
+    setEditPrice(item.price);
+    setEditMedium(item.medium);
+    setEditNewFile(null);
+    setEditNewPreviewUrl(null);
+    setEditError(null);
+  };
+
+  // Close Edit Modal
+  const closeEditModal = () => {
+    setEditingItem(null);
+    setEditNewFile(null);
+    setEditNewPreviewUrl(null);
+    setEditError(null);
+    if (editFileInputRef.current) {
+      editFileInputRef.current.value = '';
+    }
+  };
+
+  // Handle Edit Submit
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    setEditError(null);
+
+    if (!editTitle.trim()) {
+      setEditError('Please enter artwork title');
+      return;
+    }
+    if (!editPrice.trim()) {
+      setEditError('Please enter price in PKR');
+      return;
+    }
+    if (!editMedium.trim()) {
+      setEditError('Please enter medium / category');
+      return;
+    }
+
+    setEditSubmitting(true);
+
+    try {
+      let finalImageUrl = editingItem.src;
+
+      // If a new image file was chosen, upload to Supabase storage 'arts'
+      if (editNewFile) {
+        const cleanFileName = editNewFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `artwork_${Date.now()}_${cleanFileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('arts')
+          .upload(fileName, editNewFile, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw new Error(`Image upload failed: ${uploadError.message}`);
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('arts')
+          .getPublicUrl(uploadData.path);
+
+        finalImageUrl = publicUrlData.publicUrl;
+      }
+
+      const formattedPrice = editPrice.toUpperCase().startsWith('PKR')
+        ? editPrice
+        : `PKR ${editPrice}`;
+
+      // Update record in Supabase
+      const { data, error } = await supabase
+        .from('art_gallery')
+        .update({
+          title: editTitle.trim(),
+          price: formattedPrice,
+          medium: editMedium.trim(),
+          src: finalImageUrl,
+          thumb: finalImageUrl,
+        })
+        .eq('id', editingItem.id)
+        .select();
+
+      if (error) {
+        throw new Error(`Failed to update artwork: ${error.message}`);
+      }
+
+      // Update local state immediately
+      setArtworks((prev) =>
+        prev.map((item) =>
+          item.id === editingItem.id
+            ? {
+                ...item,
+                title: editTitle.trim(),
+                price: formattedPrice,
+                medium: editMedium.trim(),
+                src: finalImageUrl,
+                thumb: finalImageUrl,
+              }
+            : item
+        )
+      );
+
+      setFormSuccess(`Artwork "${editTitle}" updated successfully!`);
+      closeEditModal();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error updating artwork';
+      setEditError(msg);
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const handleDeleteArtwork = async (item: GalleryItem) => {
     const confirmDelete = window.confirm(
       `Are you sure you want to delete "${item.title}" from your gallery?`
@@ -247,6 +385,7 @@ export default function AdminPage() {
       }
 
       setArtworks((prev) => prev.filter((a) => a.id !== item.id));
+      setFormSuccess(`"${item.title}" has been deleted.`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete artwork';
       alert(`Error deleting: ${msg}`);
@@ -508,9 +647,14 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
           </div>
 
           {formSuccess && (
-            <div className="mb-6 p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-200 text-sm flex items-center space-x-2">
-              <CheckCircle size={20} className="flex-shrink-0" />
-              <span>{formSuccess}</span>
+            <div className="mb-6 p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-200 text-sm flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle size={20} className="flex-shrink-0" />
+                <span>{formSuccess}</span>
+              </div>
+              <button onClick={() => setFormSuccess(null)} className="text-emerald-300 hover:text-white p-1">
+                ✕
+              </button>
             </div>
           )}
 
@@ -527,7 +671,7 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
               <div className="lg:col-span-7 space-y-4">
                 <div>
                   <label className="block text-xs uppercase font-semibold text-[#e7c76a] tracking-wider mb-1.5">
-                    Artwork Title *
+                    Artwork Title / Name *
                   </label>
                   <input
                     type="text"
@@ -548,7 +692,7 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
                       type="text"
                       required
                       value={price}
-                      onChange={(e) => handlePriceInput(e.target.value)}
+                      onChange={(e) => handlePriceInput(e.target.value, setPrice)}
                       placeholder="e.g. PKR 9,500 or 15000"
                       className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/15 text-white placeholder-white/30 focus:outline-none focus:border-[#e7c76a] focus:ring-1 focus:ring-[#e7c76a] transition-all text-sm"
                     />
@@ -663,7 +807,7 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
                 Gallery Artworks Table ({artworks.length})
               </h2>
               <p className="text-xs sm:text-sm text-white/60">
-                All live items pulled directly from Supabase <code className="text-[#e7c76a]">art_gallery</code>.
+                All live items pulled directly from Supabase <code className="text-[#e7c76a]">art_gallery</code>. Click the edit icon to update price, title, or photo.
               </p>
             </div>
 
@@ -704,11 +848,11 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
                 <thead>
                   <tr className="border-b border-white/15 text-xs uppercase font-semibold text-[#e7c76a] tracking-wider">
                     <th className="pb-3.5 pr-4">Artwork</th>
-                    <th className="pb-3.5 px-4">Title</th>
+                    <th className="pb-3.5 px-4">Title / Name</th>
                     <th className="pb-3.5 px-4">Price</th>
                     <th className="pb-3.5 px-4">Medium / Details</th>
                     <th className="pb-3.5 px-4 text-center">WhatsApp Link</th>
-                    <th className="pb-3.5 pl-4 text-right">Action</th>
+                    <th className="pb-3.5 pl-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -731,7 +875,7 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
 
                       {/* Title */}
                       <td className="py-4 px-4 font-poppins font-medium text-white">
-                        <div className="font-semibold">{item.title}</div>
+                        <div className="font-semibold text-white">{item.title}</div>
                         <div className="text-xs text-white/40 mt-0.5">ID: {item.id}</div>
                       </td>
 
@@ -759,20 +903,32 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
                         </a>
                       </td>
 
-                      {/* Delete Action */}
+                      {/* Actions: Edit & Delete */}
                       <td className="py-4 pl-4 text-right">
-                        <button
-                          onClick={() => handleDeleteArtwork(item)}
-                          disabled={deletingId === item.id}
-                          className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-300 transition-all disabled:opacity-50"
-                          title="Delete Artwork"
-                        >
-                          {deletingId === item.id ? (
-                            <RefreshCw size={16} className="animate-spin text-red-400" />
-                          ) : (
-                            <Trash2 size={16} />
-                          )}
-                        </button>
+                        <div className="flex items-center justify-end space-x-2">
+                          {/* Edit Button */}
+                          <button
+                            onClick={() => openEditModal(item)}
+                            className="p-2 rounded-lg bg-[#e7c76a]/15 hover:bg-[#e7c76a]/30 text-[#e7c76a] hover:text-white transition-all"
+                            title="Edit Artwork Details, Price & Photo"
+                          >
+                            <Pencil size={16} />
+                          </button>
+
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => handleDeleteArtwork(item)}
+                            disabled={deletingId === item.id}
+                            className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-300 transition-all disabled:opacity-50"
+                            title="Delete Artwork"
+                          >
+                            {deletingId === item.id ? (
+                              <RefreshCw size={16} className="animate-spin text-red-400" />
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -782,6 +938,189 @@ CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USI
           )}
         </div>
       </main>
+
+      {/* Edit Artwork Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#40472b] border border-[#e7c76a]/60 rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-lg bg-[#e7c76a]/20 text-[#e7c76a]">
+                  <Pencil size={20} />
+                </div>
+                <div>
+                  <h3 className="font-poppins font-bold text-lg text-white">
+                    Edit Artwork Post
+                  </h3>
+                  <p className="text-xs text-white/60">
+                    Modify title, price, medium, or change the artwork photo.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeEditModal}
+                className="text-white/60 hover:text-white p-1.5 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Form Content */}
+            <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-6">
+              {editError && (
+                <div className="p-4 bg-red-500/20 border border-red-500/40 rounded-xl text-red-200 text-sm flex items-center space-x-2">
+                  <AlertCircle size={18} className="flex-shrink-0" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              {/* Image Section: Current vs New */}
+              <div>
+                <label className="block text-xs uppercase font-semibold text-[#e7c76a] tracking-wider mb-2">
+                  Artwork Photo
+                </label>
+                
+                <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-black/30 border border-white/10">
+                  {/* Current or Preview Image */}
+                  <div className="relative w-28 h-28 rounded-lg overflow-hidden border-2 border-[#e7c76a] bg-black/40 flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={editNewPreviewUrl || editingItem.thumb || editingItem.src}
+                      alt="Artwork Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="flex-1 text-center sm:text-left space-y-2">
+                    <p className="text-sm font-medium text-white">
+                      {editNewFile ? (
+                        <span className="text-emerald-400 font-semibold">
+                          New file selected: {editNewFile.name}
+                        </span>
+                      ) : (
+                        <span>Current artwork photo in gallery</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-white/50">
+                      Upload a new photo to replace the current image in the Supabase &apos;arts&apos; bucket, or leave as is.
+                    </p>
+                    
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => editFileInputRef.current?.click()}
+                        className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition-all border border-white/15 flex items-center space-x-1.5"
+                      >
+                        <Upload size={14} className="text-[#e7c76a]" />
+                        <span>{editNewFile ? 'Choose Different Photo' : 'Upload New Photo'}</span>
+                      </button>
+
+                      {editNewFile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditNewFile(null);
+                            setEditNewPreviewUrl(null);
+                            if (editFileInputRef.current) editFileInputRef.current.value = '';
+                          }}
+                          className="px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-medium transition-all"
+                        >
+                          Keep Original
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      type="file"
+                      ref={editFileInputRef}
+                      onChange={handleEditFileChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Title / Name */}
+              <div>
+                <label className="block text-xs uppercase font-semibold text-[#e7c76a] tracking-wider mb-1.5">
+                  Artwork Title / Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="e.g. The Ballerina Silhouette Pillow"
+                  className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/15 text-white placeholder-white/30 focus:outline-none focus:border-[#e7c76a] focus:ring-1 focus:ring-[#e7c76a] transition-all text-sm"
+                />
+              </div>
+
+              {/* Price & Medium in 2 Columns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs uppercase font-semibold text-[#e7c76a] tracking-wider mb-1.5">
+                    Price in PKR *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPrice}
+                    onChange={(e) => handlePriceInput(e.target.value, setEditPrice)}
+                    placeholder="e.g. PKR 8,500"
+                    className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/15 text-white placeholder-white/30 focus:outline-none focus:border-[#e7c76a] focus:ring-1 focus:ring-[#e7c76a] transition-all text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase font-semibold text-[#e7c76a] tracking-wider mb-1.5">
+                    Medium / Details *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editMedium}
+                    onChange={(e) => setEditMedium(e.target.value)}
+                    placeholder="e.g. Handcrafted 3D Tulle on Cushion"
+                    className="w-full px-4 py-3 rounded-xl bg-black/30 border border-white/15 text-white placeholder-white/30 focus:outline-none focus:border-[#e7c76a] focus:ring-1 focus:ring-[#e7c76a] transition-all text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Footer Actions inside form */}
+              <div className="pt-4 border-t border-white/10 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  disabled={editSubmitting}
+                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="px-7 py-2.5 rounded-xl bg-[#e7c76a] hover:bg-[#ebd281] disabled:opacity-50 text-[#202020] font-poppins font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center space-x-2"
+                >
+                  {editSubmitting ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* SQL Schema Modal */}
       {showSchemaModal && (
@@ -831,9 +1170,9 @@ ALTER TABLE public.art_gallery ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public can view artworks" ON public.art_gallery FOR SELECT USING (true);
 CREATE POLICY "Enable insert for all users" ON public.art_gallery FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable delete for all users" ON public.art_gallery FOR DELETE USING (true);
+CREATE POLICY "Enable update for all users" ON public.art_gallery FOR UPDATE USING (true);
 
--- Storage bucket 'arts'
-INSERT INTO storage.buckets (id, name, public) VALUES ('arts', 'arts', true) ON CONFLICT (id) DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('arts', 'arts', true) ON CONFLICT (id) DO UPDATE SET public = true;
 CREATE POLICY "Public access to arts bucket" ON storage.objects FOR SELECT USING (bucket_id = 'arts');
 CREATE POLICY "Public insert to arts bucket" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'arts');
 CREATE POLICY "Public delete from arts bucket" ON storage.objects FOR DELETE USING (bucket_id = 'arts');`}
